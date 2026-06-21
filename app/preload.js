@@ -14,18 +14,36 @@ const playlist = require('./js/domain/playlist');
 const darkMode = require('./js/domain/dark_mode');
 const nav = require('./js/domain/nav');
 
+function startBackgroundFeedRefresh() {
+    const refresh = () => {
+        const feedPromise = feed.readFeeds();
+
+        if (feedPromise && typeof feedPromise.then === 'function') {
+            feedPromise.then(() => {
+                nav.selectMenuItem('menu-episodes');
+                nav.showNewEpisodes();
+                navigation.setItemCounts();
+            });
+        }
+    };
+
+    if (typeof window.requestIdleCallback === 'function') {
+        window.requestIdleCallback(refresh, { timeout: 1000 });
+    } else {
+        setTimeout(refresh, 0);
+    }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
-    global.init();
-    audioPlayer.init();
-    playlist.loadPlaylists();
-    nav.showNewEpisodes();
-    navigation.setItemCounts();
-    nav.initLocalization();
-    feed.readFeeds().then(() => {
-        nav.selectMenuItem('menu-episodes');
+    setTimeout(() => {
+        global.init();
+        audioPlayer.init();
+        playlist.loadPlaylists();
         nav.showNewEpisodes();
         navigation.setItemCounts();
-    });
+        nav.initLocalization();
+        startBackgroundFeedRefresh();
+    }, 0);
 });
 
 
@@ -176,6 +194,17 @@ contextBridge.exposeInMainWorld('myAPI', {
     setTitle: (title) => {
         console.log('settitle');
         return { title: title };
+    },
+    theme: () => {
+        if (global.getPreference('darkmode', false) === true) {
+            return 'dark';
+        }
+
+        if (global.getPreference('lightmode', false) === true) {
+            return 'light';
+        }
+
+        return 'system';
     },
     lang: () => ipcRenderer.invoke('lang'),
     toggle: () => ipcRenderer.invoke('dark-mode:toggle'),

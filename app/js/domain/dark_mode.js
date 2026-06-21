@@ -72,6 +72,10 @@ function removeDarkSchemeLinks() {
  * @private
  */
 function addDarkSchemeLink() {
+    if (document.querySelector('link[href="./css/dark_layout.css"]:not([media])') !== null) {
+        return;
+    }
+
     let stylesheet = document.createElement('link');
     stylesheet.setAttribute('rel', 'stylesheet');
     stylesheet.setAttribute('href', './css/dark_layout.css');
@@ -82,6 +86,10 @@ function addDarkSchemeLink() {
  * @private
  */
 function addSystemColorSchemeLinks() {
+    if (document.querySelector('link[href="./css/dark_layout.css"][media="(prefers-color-scheme: dark)"]') !== null) {
+        return;
+    }
+
     let stylesheet = document.createElement('link');
     stylesheet.setAttribute('rel', 'stylesheet');
     stylesheet.setAttribute('href', './css/dark_layout.css');

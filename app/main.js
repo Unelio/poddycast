@@ -1,6 +1,6 @@
 'use strict';
 
-const { app, BrowserWindow, ipcMain, Menu, Tray, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, dialog } = require('electron'); // Tray retiré
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
@@ -10,6 +10,8 @@ const global = require('./js/helper/helper_global');
 
 // Create variables for appIcon, trayIcon, win
 // to prevent their removal by garbage collection
+const ENABLE_TRAY = true;
+
 let appIcon = null;
 let trayIcon = null;
 let win;
@@ -51,14 +53,16 @@ function createWindow() {
     // Load language file
     const file = path.join(__dirname, 'translations/' + app.getLocale() + '.json');
     const defaultFile = path.join(__dirname, 'translations/en.json');
-    const loadedLanguage = JSON.parse(fs.readFileSync((fs.existsSync(file)) ? file : defaultFile), 'utf8');
+    const loadedLanguage = JSON.parse(fs.readFileSync((fs.existsSync(file)) ? file : defaultFile, 'utf8'));
 
     function translate(_Phrase) {
         return ((loadedLanguage[_Phrase] === undefined) ? _Phrase : loadedLanguage[_Phrase]);
     }
 
     // Define menu template
-    const template = [
+    const showMenu = true;
+
+    const template = showMenu ? [
         {
             label: translate('Edit'),
             submenu: [
@@ -263,7 +267,7 @@ function createWindow() {
                 { role: 'toggledevtools' }
             ]
         }
-    ];
+    ] : [];
 
     if (process.platform === 'darwin') {
         template.unshift({
@@ -354,45 +358,47 @@ function createWindow() {
     const menu = Menu.buildFromTemplate(template);
     Menu.setApplicationMenu(menu);
 
-    // Create tray icon
-    appIcon = new Tray(trayIcon);
+    // Tray icon
+    if (ENABLE_TRAY) {
+        const { Tray } = require('electron');
 
-    // Create RightClick context menu for tray icon
-    const contextMenu = Menu.buildFromTemplate([
-        {
-            click: () => {
-                win.show();
+        appIcon = new Tray(trayIcon);
+
+        // Create RightClick context menu for tray icon
+        const contextMenu = Menu.buildFromTemplate([
+            {
+                click: () => {
+                    win.show();
+                },
+                label: 'Restore app'
             },
-            label: 'Restore app'
-        },
-        {
-            click: () => {
-                win.close();
-            },
-            label: 'Close app'
-        }
-    ]);
+            {
+                click: () => {
+                    win.close();
+                },
+                label: 'Close app'
+            }
+        ]);
 
-    // Set title for tray icon
-    appIcon.setTitle('Poddycast');
+        // Set title for tray icon
+        appIcon.setTitle('Poddycast');
 
-    // Set toot tip for tray icon
-    appIcon.setToolTip('Poddycast');
+        // Set toot tip for tray icon
+        appIcon.setToolTip('Poddycast');
+        appIcon.setContextMenu(contextMenu);
 
-    // Create RightClick context menu
-    appIcon.setContextMenu(contextMenu);
+        // Always highlight the tray icon - deprecated
+        // appIcon.setHighlightMode('always')
 
-    // Always highlight the tray icon - deprecated
-    // appIcon.setHighlightMode('always')
+        // The tray icon is not destroyed
+        appIcon.isDestroyed(false);
 
-    // The tray icon is not destroyed
-    appIcon.isDestroyed(false);
-
-    // Restore (open) app after clicking on tray icon
-    // if window is already open, minimize it to system tray
-    appIcon.on('click', () => {
-        win.isVisible() ? win.hide() : win.show();
-    });
+        // Restore (open) app after clicking on tray icon
+        // if window is already open, minimize it to system tray
+        appIcon.on('click', () => {
+            win.isVisible() ? win.hide() : win.show();
+        });
+    }
 
     win.on('closed', function() {
         // Dereference the window object, usually you would store windows
@@ -411,7 +417,7 @@ function createWindow() {
     }
 
     // Quit when all windows are closed
-    win.on('window-all-closed', () => {
+    app.on('window-all-closed', () => {
         app.quit();
     });
 
@@ -425,10 +431,7 @@ function createWindow() {
 if (!gotTheLock) {
     app.quit();
 } else {
-    // TODO: Resolve this linting warning. We should be able to delete the unused inputs without issue.
-    // eslint-disable-next-line no-unused-vars
-    app.on('second-instance', (event, commandLine, workingDirectory) => {
-        // Someone tried to run a second instance, we should focus our window.
+    app.on('second-instance', () => {
         if (win) {
             if (win.isMinimized()) win.restore();
             win.focus();

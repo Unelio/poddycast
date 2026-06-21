@@ -2,7 +2,6 @@
 
 const global = require('../helper/helper_global');
 const animation = require('../domain/animation.js');
-const json2html = require('node-json2html');
 
 const eLayout = {
     row: 'list-item-row-layout',
@@ -152,6 +151,8 @@ module.exports.getProgressPart = getProgressPart;
  * @returns {DOMElement}
  */
 function renderNewEpisodeItem(_JsonData) {
+    const json2html = require('node-json2html');
+
     let html = json2html.render(_JsonData,
         {
             '<>': 'li',

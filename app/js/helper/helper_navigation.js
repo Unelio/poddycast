@@ -10,20 +10,20 @@ const playlist = require('../domain/playlist');
 // ---------------------------------------------------------------------------------------------------------------------
 
 function setItemCounts() {
-    let NewEpisodesCount = document.getElementById('menu-episodes').getElementsByClassName('menu-count')[0];
-
-    if (global.fileExistsAndIsNotEmpty(global.newEpisodesSaveFilePath)) {
-        NewEpisodesCount.innerHTML = JSON.parse(fs.readFileSync(global.newEpisodesSaveFilePath, 'utf-8')).length;
-    } else {
-        NewEpisodesCount.innerHTML = 0;
-    }
-
     let FavoritesCount = document.getElementById('menu-favorites').getElementsByClassName('menu-count')[0];
 
     if (global.fileExistsAndIsNotEmpty(global.saveFilePath)) {
         FavoritesCount.innerHTML = JSON.parse(fs.readFileSync(global.saveFilePath, 'utf-8')).length;
     } else {
         FavoritesCount.innerHTML = 0;
+    }
+
+    let NewEpisodesCount = document.getElementById('menu-episodes').getElementsByClassName('menu-count')[0];
+
+    if (global.fileExistsAndIsNotEmpty(global.newEpisodesSaveFilePath)) {
+        NewEpisodesCount.innerHTML = JSON.parse(fs.readFileSync(global.newEpisodesSaveFilePath, 'utf-8')).length;
+    } else {
+        NewEpisodesCount.innerHTML = 0;
     }
 }
 module.exports.setItemCounts = setItemCounts;

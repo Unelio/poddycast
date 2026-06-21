@@ -37,6 +37,23 @@ function translateByClass(className, value) {
     });
 }
 
+function loadPodcastArtworkMap() {
+    const podcastArtworkByName = new Map();
+
+    if (fs.existsSync(global.saveFilePath) && fs.readFileSync(global.saveFilePath, 'utf-8') !== '') {
+        const podcasts = JSON.parse(fs.readFileSync(global.saveFilePath, 'utf-8'));
+
+        for (let i = 0; i < podcasts.length; i++) {
+            podcastArtworkByName.set(podcasts[i].collectionName, {
+                artworkUrl60: podcasts[i].artworkUrl60,
+                artworkUrl100: podcasts[i].artworkUrl100
+            });
+        }
+    }
+
+    return podcastArtworkByName;
+}
+
 function selectMenuItem(_MenuId) {
     let MenuItem = document.getElementById(_MenuId);
 
@@ -62,15 +79,22 @@ function showNewEpisodes() {
     if (fs.existsSync(global.newEpisodesSaveFilePath) && fs.readFileSync(global.newEpisodesSaveFilePath, 'utf-8') !== '') {
         let JsonContent = JSON.parse(fs.readFileSync(global.newEpisodesSaveFilePath, 'utf-8'));
         let List = document.getElementById('list');
+        let Fragment = document.createDocumentFragment();
+        let PodcastArtworkByName = loadPodcastArtworkMap();
 
         navigation.setGridLayout(List, false);
         mainBody.setDetailPanelSubContent(JsonContent.length + ' ITEMS');
 
         for (let i = 0; i < JsonContent.length; i++) {
-            let Artwork = global.getValueFromFile(global.saveFilePath, 'artworkUrl60', 'collectionName', JsonContent[i].channelName);
+            let Artwork = null;
+            const PodcastInfo = PodcastArtworkByName.get(JsonContent[i].channelName);
 
-            if (global.getValueFromFile(global.saveFilePath, 'artworkUrl100', 'collectionName', JsonContent[i].channelName) !== undefined && global.getValueFromFile(global.saveFilePath, 'artworkUrl100', 'collectionName', JsonContent[i].channelName) !== 'undefined') {
-                Artwork = global.getValueFromFile(global.saveFilePath, 'artworkUrl100', 'collectionName', JsonContent[i].channelName);
+            if (PodcastInfo !== undefined) {
+                Artwork = PodcastInfo.artworkUrl60;
+            }
+
+            if (PodcastInfo !== undefined && PodcastInfo.artworkUrl100 !== undefined && PodcastInfo.artworkUrl100 !== 'undefined') {
+                Artwork = PodcastInfo.artworkUrl100;
             }
 
             const JsonData = [
@@ -89,8 +113,10 @@ function showNewEpisodes() {
                 }
             ];
 
-            List.append(listItem.renderNewEpisodeItem(JsonData));
+            Fragment.append(listItem.renderNewEpisodeItem(JsonData));
         }
+
+        List.append(Fragment);
     }
 }
 module.exports.showNewEpisodes = showNewEpisodes;
@@ -103,6 +129,7 @@ function showFavorites() {
         let JsonContent = JSON.parse(fs.readFileSync(global.saveFilePath, 'utf-8'));
         JsonContent = entries.sortByName(JsonContent);
         let List = document.getElementById('list');
+        let Fragment = document.createDocumentFragment();
 
         navigation.setGridLayout(List, true);
 
@@ -154,8 +181,10 @@ function showFavorites() {
                 }
             }
 
-            List.append(ListElement);
+            Fragment.append(ListElement);
         }
+
+        List.append(Fragment);
     }
 }
 module.exports.showFavorites = showFavorites;
@@ -167,6 +196,8 @@ function showHistory() {
     if (global.fileExistsAndIsNotEmpty(global.archivedFilePath)) {
         let JsonContent = JSON.parse(fs.readFileSync(global.archivedFilePath, 'utf-8'));
         let List = document.getElementById('list');
+        let Fragment = document.createDocumentFragment();
+        let PodcastArtworkByName = loadPodcastArtworkMap();
 
         navigation.setGridLayout(List, false);
 
@@ -187,10 +218,15 @@ function showHistory() {
         for (let i = JsonContent.length - Count; i < JsonContent.length; i++) {
             let ChannelName = JsonContent[i].channelName;
             let EpisodeTitle = JsonContent[i].episodeTitle;
-            let Artwork = global.getValueFromFile(global.saveFilePath, 'artworkUrl60', 'collectionName', ChannelName);
+            let Artwork = null;
+            const PodcastInfo = PodcastArtworkByName.get(ChannelName);
 
-            if (global.getValueFromFile(global.saveFilePath, 'artworkUrl100', 'collectionName', ChannelName) !== undefined && global.getValueFromFile(global.saveFilePath, 'artworkUrl100', 'collectionName', ChannelName) !== 'undefined') {
-                Artwork = global.getValueFromFile(global.saveFilePath, 'artworkUrl100', 'collectionName', ChannelName);
+            if (PodcastInfo !== undefined) {
+                Artwork = PodcastInfo.artworkUrl60;
+
+                if (PodcastInfo.artworkUrl100 !== undefined && PodcastInfo.artworkUrl100 !== 'undefined') {
+                    Artwork = PodcastInfo.artworkUrl100;
+                }
             }
 
             if (Artwork !== null) {
@@ -204,9 +240,11 @@ function showHistory() {
                     '5em 3fr 1fr'
                 ), listItem.eLayout.row);
 
-                List.insertBefore(ListElement, List.childNodes[0]);
+                Fragment.append(ListElement);
             }
         }
+
+        List.insertBefore(Fragment, List.childNodes[0]);
     }
 }
 module.exports.showHistory = showHistory;

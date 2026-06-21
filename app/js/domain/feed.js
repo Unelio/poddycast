@@ -25,9 +25,19 @@ function readFeeds() {
     // Add animation to notify the user about fetching new episodes
     document.querySelector('#menu-refresh i').classList.add('is-refreshing');
 
+    const stopRefreshing = () => {
+        const refreshIcon = document.querySelector('#menu-refresh i');
+
+        if (refreshIcon !== null) {
+            refreshIcon.classList.remove('is-refreshing');
+        }
+    };
+
     if (fs.readFileSync(global.saveFilePath, 'utf-8') !== '') {
         let JsonContent = JSON.parse(fs.readFileSync(global.saveFilePath, 'utf-8'));
 
+        const pendingEpisodes = [];
+        const recentEpisodeUpdates = new Map();
         let feedUrl = '';
         let feedPromises = [];
         for (let i = 0; i < JsonContent.length; i++) {
@@ -41,7 +51,7 @@ function readFeeds() {
                 request
                     .requestPodcastFeed(feedUrl, false)
                     .then((result) => {
-                        saveLatestEpisodeJson(result);
+                        saveLatestEpisodeJson(result, pendingEpisodes, recentEpisodeUpdates);
                     })
                     .catch((error) => {
                         console.error(error);
@@ -51,17 +61,18 @@ function readFeeds() {
         return new Promise((resolve) => {
             Promise.allSettled(feedPromises)
                 .finally(() => {
+                    flushSavedEpisodes(pendingEpisodes);
+                    flushRecentEpisodeUpdates(recentEpisodeUpdates);
+                    navigation.setItemCounts();
                     // stop refreshing on success or failure
-                    // includes minimum delay for user feedback
-                    setTimeout(() => {
-                        document
-                            .querySelector('#menu-refresh i')
-                            .classList.remove('is-refreshing');
-                    }, 1000);
+                    stopRefreshing();
                     resolve();
                 });
         });
     }
+
+    stopRefreshing();
+    return Promise.resolve();
 }
 module.exports.readFeeds = readFeeds;
 
@@ -280,7 +291,7 @@ module.exports.addToEpisodes = addToEpisodes;
  * @private
  * @param {JSON} content Podcast feed in JSON format
  */
-function saveLatestEpisodeJson(content) {
+function saveLatestEpisodeJson(content, pendingEpisodes, recentEpisodeUpdates) {
     // NOTE: Fetch the new episode only if it is not disabled in the podcast settings
     if (!global.isAddedToInbox(content.link))
         return;
@@ -301,7 +312,7 @@ function saveLatestEpisodeJson(content) {
                 item.itunes_image,
                 item.duration_formatted
             );
-            saveEpisode(episode);
+            pendingEpisodes.push(episode.toJSON());
             // only process one episode if we don't have a previous one stored
             if (storedRecentDate === null) {
                 break;
@@ -310,7 +321,61 @@ function saveLatestEpisodeJson(content) {
             break;
         }
     }
-    global.addRecentEpisode(content.link, latestDate);
+
+    recentEpisodeUpdates.set(content.link, latestDate);
+}
+
+/**
+ * Writes all queued episodes to disk in one pass.
+ * @private
+ * @param {Array} pendingEpisodes
+ */
+function flushSavedEpisodes(pendingEpisodes) {
+    if (pendingEpisodes.length === 0) {
+        return;
+    }
+
+    let jsonContent = [];
+
+    if (fs.existsSync(global.newEpisodesSaveFilePath) && fs.readFileSync(global.newEpisodesSaveFilePath, 'utf-8') !== '') {
+        jsonContent = JSON.parse(fs.readFileSync(global.newEpisodesSaveFilePath, 'utf-8'));
+    }
+
+    const existingTitles = new Set(jsonContent.map((episode) => episode.episodeTitle));
+
+    for (let i = 0; i < pendingEpisodes.length; i++) {
+        const episode = pendingEpisodes[i];
+
+        if (!existingTitles.has(episode.episodeTitle)) {
+            jsonContent.push(episode);
+            existingTitles.add(episode.episodeTitle);
+        }
+    }
+
+    fs.writeFileSync(global.newEpisodesSaveFilePath, JSON.stringify(jsonContent));
+}
+
+/**
+ * Writes recent episode timestamps in one pass.
+ * @private
+ * @param {Map<string, string>} recentEpisodeUpdates
+ */
+function flushRecentEpisodeUpdates(recentEpisodeUpdates) {
+    if (recentEpisodeUpdates.size === 0) {
+        return;
+    }
+
+    let jsonContent = {};
+
+    if (fs.existsSync(global.recentEpisodePath) && fs.readFileSync(global.recentEpisodePath, 'utf-8') !== '') {
+        jsonContent = JSON.parse(fs.readFileSync(global.recentEpisodePath, 'utf-8'));
+    }
+
+    recentEpisodeUpdates.forEach((episodeDate, feedUrl) => {
+        jsonContent[feedUrl] = episodeDate;
+    });
+
+    fs.writeFileSync(global.recentEpisodePath, JSON.stringify(jsonContent));
 }
 
 /**

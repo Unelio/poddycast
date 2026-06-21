@@ -9,7 +9,7 @@ const sidebar = require('../domain/sidebar');
 // GLOBAL
 // ---------------------------------------------------------------------------------------------------------------------
 
-const saveDirPath = os.homedir() + '/poddycast-data';
+const saveDirPath = os.homedir() + (process.platform === 'linux' ? '/.poddycast-data' : '/poddycast-data');
 const saveFilePath = saveDirPath + '/poddycast-favorite_podcasts.json';
 const newEpisodesSaveFilePath = saveDirPath + '/poddycast-new_episodes.json';
 const archivedFilePath = saveDirPath + '/poddycast-archived_episodes.json';
