@@ -19,6 +19,8 @@ let slider = undefined;
 const MIN_PLAYER_SPEED = 0.2;
 const MAX_PLAYER_SPEED = 4.0;
 const PLAYER_SPEED_INCREMENT = 0.1;
+const PLAYER_ARTWORK_FALLBACK_LIGHT = './img/poddycast-placeholder-dark.png';
+const PLAYER_ARTWORK_FALLBACK_DARK = './img/poddycast-placeholder-light.png';
 
 function init() {
     slider = new Slider(this);
@@ -53,8 +55,7 @@ function playNow(_Self) {
         ? _Self.getAttribute('artworkUrl')
         : _Self.getAttribute('episodeImagekUrl');
 
-    document.getElementById('content-right-player-img').src = img;
-    document.getElementById('content-right-player-img').style.filter = 'none';
+    setPlayerArtwork(img);
     document.getElementById('content-right-player-title').innerHTML = _Self.getAttribute('title');
     togglePlayPauseButton();
 
@@ -62,13 +63,46 @@ function playNow(_Self) {
         togglePlayPauseButton();
     }
 
-    activateArtworkAnimation(img);
-
     // TODO: needs new solution cause of IPC
     // const mainAppWindow = BrowserWindow.getAllWindows()[0];
     // mainAppWindow.setTitle(_Self.getAttribute('title'));
 }
 module.exports.playNow = playNow;
+
+function setPlayerArtwork(img) {
+    const playerImg = document.getElementById('content-right-player-img');
+    const artwork = (img && img !== 'undefined') ? img : getPlayerArtworkFallback();
+
+    playerImg.onload = function () {
+        playerImg.style.filter = 'none';
+        activateArtworkAnimation(playerImg.src);
+    };
+
+    playerImg.onerror = function () {
+        playerImg.onerror = null;
+        playerImg.dataset.fallbackArtwork = 'true';
+        playerImg.src = getPlayerArtworkFallback();
+    };
+
+    playerImg.dataset.fallbackArtwork = (artwork === getPlayerArtworkFallback()) ? 'true' : 'false';
+    playerImg.src = artwork;
+}
+
+function getPlayerArtworkFallback() {
+    return isDarkThemeEnabled() ? PLAYER_ARTWORK_FALLBACK_DARK : PLAYER_ARTWORK_FALLBACK_LIGHT;
+}
+
+function isDarkThemeEnabled() {
+    if (global.getPreference('darkmode', false) === true) {
+        return true;
+    }
+
+    if (global.getPreference('lightmode', false) === true) {
+        return false;
+    }
+
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+}
 
 
 /**
